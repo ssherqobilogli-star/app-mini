@@ -1198,23 +1198,37 @@ function TarjimonScreen({ onBack }: { onBack: () => void }) {
     haptic('medium');
     setLoading(true);
 
-    // Simulated translation (in production, this comes from the bot)
-    await new Promise(r => setTimeout(r, 1500));
+    try {
+      const systemPrompt = direction === 'uz_de'
+        ? `Nemis tili tarjimoni. O'zbekchadan nemischaga tarjima qil. Faqat JSON: {"translation": "nemischa", "explanation": "grammatik izoh o'zbek tilida"}`
+        : `Nemis tili tarjimoni. Nemischadan o'zbekchaga tarjima qil. Faqat JSON: {"translation": "o'zbekcha", "explanation": "grammatik izoh o'zbek tilida"}`;
 
-    const demoTranslations: Record<string, { translation: string; explanation: string }> = {
-      'uz_de': {
-        translation: 'Ich komme aus Usbekistan und lerne Deutsch.',
-        explanation: 'Ich komme aus = Men ...dan kelaman (hozirgi zamon), lerne = o`rganmoqda (hozirgi zamon)',
-      },
-      'de_uz': {
-        translation: "Men Germaniyada yashayman va har kuni nemis tilini o'qiyman.",
-        explanation: 'wohne = yashamoq (hozirgi zamon), lese = o`qimoq (hozirgi zamon)',
-      },
-    };
-
-    setResult(demoTranslations[direction] || demoTranslations['uz_de']);
+      const groqKey = (window as any).__GROQ_KEY__ || import.meta.env.VITE_GROQ_KEY || '';
+      const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${groqKey}` },
+        body: JSON.stringify({
+          model: 'llama3-70b-8192',
+          messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: input.trim() }],
+          max_tokens: 512,
+          temperature: 0.3,
+        }),
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        const text = data.choices?.[0]?.message?.content || '';
+        try {
+          const parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
+          setResult({ translation: parsed.translation || text, explanation: parsed.explanation || '' });
+          haptic('success');
+        } catch { setResult({ translation: text, explanation: '' }); haptic('success'); }
+      } else {
+        setResult({ translation: 'Tarjima qilinmadi (API xato)', explanation: 'Bot orqali ishlating.' });
+      }
+    } catch {
+      setResult({ translation: 'Internet muammosi', explanation: '' });
+    }
     setLoading(false);
-    haptic('success');
   };
 
   return (
