@@ -800,215 +800,162 @@ function VorstellungScreen({ onBack }: { onBack: () => void }) {
 }
 
 // ==================== AKTIV SPRECHEN SCREEN ====================
-// ==================== AKTIV SPRECHEN — vocabulary.json based ====================
-
-// Types
-interface VocabEntry {
-  german: string;
-  article: string | null;
-  uzbek: string;
-}
-
-interface VocabDB {
-  [level: string]: {
-    [book: string]: {
-      [chapter: string]: VocabEntry[];
-    };
-  };
-}
-
-const BOOK_EMOJI: Record<string, string> = {
-  Motivie: '📕', Schritte: '📗', Menschen: '📘',
-  Sicher: '📙', Aspekte: '📓', Kompassdaf: '📔',
-};
-
-const ART_COLOR: Record<string, string> = {
-  der: '#4A9FE7', die: '#F87171', das: '#4ADE80',
-};
-
-function useVocabDB() {
-  const [db, setDb] = useState<VocabDB | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch('/data/vocabulary.json')
-      .then((r) => r.json())
-      .then((data) => { setDb(data); setLoading(false); })
-      .catch(() => setLoading(false));
-  }, []);
-
-  return { db, loading };
-}
-
 function AktivSprechenScreen({ onNavigate, onBack }: { onNavigate: (v: View, p?: any) => void; onBack: () => void }) {
-  const { db, loading } = useVocabDB();
-  const [selectedLevel, setSelectedLevel] = useState<string>('A1');
-  const levels = ['A1', 'A2', 'B1', 'B2'];
-
-  const books = db ? Object.keys(db[selectedLevel] || {}) : [];
+  const [selectedLevel, setSelectedLevel] = useState<Level>('a1');
+  const levels: Level[] = ['a1', 'a2', 'b1', 'b2', 'c1'];
+  const topics = SAMPLE_TOPICS[selectedLevel] || [];
 
   return (
     <div className="view-enter" style={{ position: 'relative', zIndex: 1, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <ScreenHeader title="Aktiv Sprechen" onBack={onBack} />
       <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
-
         {/* Info */}
         <div className="glass-card" style={{ padding: 12, marginBottom: 16 }}>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
             <Volume2 size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 6, color: 'var(--accent-green)' }} />
-            Darajani tanlang → Kitobni oching → Lektsiya so'zlarini o'rganing!
+            Darajangizni tanlang, mavzuni oching, 25 ta so'zni yodlang va AI hikoyasini eshiting!
           </div>
         </div>
 
         {/* Level Selector */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
           {levels.map((lvl) => (
             <button
               key={lvl}
               onClick={() => { haptic('light'); setSelectedLevel(lvl); }}
               style={{
-                padding: '8px 22px', borderRadius: 20, border: '1px solid',
-                borderColor: selectedLevel === lvl ? LEVEL_COLORS[lvl.toLowerCase()] : 'var(--border-subtle)',
-                background: selectedLevel === lvl ? `${LEVEL_COLORS[lvl.toLowerCase()]}25` : 'var(--surface-glass)',
-                color: selectedLevel === lvl ? LEVEL_COLORS[lvl.toLowerCase()] : 'var(--text-secondary)',
-                fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 13, cursor: 'pointer',
+                padding: '8px 20px',
+                borderRadius: 20,
+                border: '1px solid',
+                borderColor: selectedLevel === lvl ? LEVEL_COLORS[lvl] : 'var(--border-subtle)',
+                background: selectedLevel === lvl ? `${LEVEL_COLORS[lvl]}25` : 'var(--surface-glass)',
+                color: selectedLevel === lvl ? LEVEL_COLORS[lvl] : 'var(--text-secondary)',
+                fontFamily: "'Montserrat', sans-serif",
+                fontWeight: 700,
+                fontStyle: 'italic',
+                fontSize: 13,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
               }}
             >
-              {lvl}
+              {lvl.toUpperCase()}
             </button>
           ))}
         </div>
 
-        {/* Books */}
-        {loading ? (
-          <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 40 }}>Yuklanmoqda...</div>
-        ) : books.length === 0 ? (
-          <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 40 }}>Ma'lumot topilmadi</div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {books.map((book) => {
-              const chapters = db ? Object.keys(db[selectedLevel]?.[book] || {}) : [];
-              const totalWords = db ? chapters.reduce((acc, ch) => acc + (db[selectedLevel]?.[book]?.[ch]?.length || 0), 0) : 0;
-              const emoji = BOOK_EMOJI[book] || '📚';
-              return (
-                <button
-                  key={book}
-                  className="glass-card glass-card-hover"
-                  onClick={() => { haptic('light'); onNavigate('aktiv_words', { level: selectedLevel, book }); }}
-                  style={{ padding: 16, display: 'flex', alignItems: 'center', gap: 14, textAlign: 'left', width: '100%', cursor: 'pointer' }}
-                >
-                  <div style={{
-                    width: 52, height: 52, borderRadius: 14,
-                    background: 'linear-gradient(135deg, #10B981, #34D399)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, flexShrink: 0,
-                  }}>
-                    {emoji}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: 'white', marginBottom: 4 }}>{book}</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                      {chapters.length} ta lektion • {totalWords} ta so'z
-                    </div>
-                  </div>
-                  <ChevronRight size={18} color="var(--text-muted)" />
-                </button>
-              );
-            })}
-          </div>
-        )}
-        <div style={{ height: 40 }} />
+        {/* Topics Grid */}
+        <div style={{ fontSize: 13, fontWeight: 600, fontStyle: 'italic', color: 'var(--text-secondary)', marginBottom: 10 }}>
+          Mavzular ({topics.length} ta)
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8 }}>
+          {topics.map((topic, i) => (
+            <button
+              key={i}
+              className="glass-card glass-card-hover"
+              onClick={() => {
+                haptic('light');
+                onNavigate('aktiv_words', { level: selectedLevel, topicIndex: i, topicName: topic });
+              }}
+              style={{
+                padding: '12px 8px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 4,
+                cursor: 'pointer',
+              }}
+            >
+              <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--accent-blue)' }}>{i + 1}</span>
+              <span style={{ fontSize: 9, color: 'var(--text-secondary)', textAlign: 'center', lineHeight: 1.3 }}>{topic}</span>
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );
 }
 
-// ==================== AKTIV WORDS SCREEN (Lektion tanlash + So'zlar) ====================
+// ==================== AKTIV WORDS SCREEN ====================
 function AktivWordsScreen({ payload, onNavigate, onBack }: { payload: any; onNavigate: (v: View, p?: any) => void; onBack: () => void }) {
-  const { db, loading } = useVocabDB();
-  const { level, book, chapter } = payload || {};
-  const [selectedChapter, setSelectedChapter] = useState<string | null>(chapter || null);
-
-  const chapters = db ? Object.keys(db[level]?.[book] || {}) : [];
-  const words: VocabEntry[] = (selectedChapter && db) ? (db[level]?.[book]?.[selectedChapter] || []) : [];
-  const emoji = BOOK_EMOJI[book] || '📚';
-
-  if (loading) {
-    return (
-      <div className="view-enter" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ color: 'var(--text-muted)' }}>Yuklanmoqda...</div>
-      </div>
-    );
-  }
+  const [learned, setLearned] = useState(false);
+  const { level, topicName } = payload || {};
 
   return (
     <div className="view-enter" style={{ position: 'relative', zIndex: 1, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <ScreenHeader title={`${emoji} ${book} — ${level}`} onBack={onBack} />
+      <ScreenHeader title={`${topicName || 'Mavzu'} — 25 ta so'z`} onBack={onBack} />
       <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+          <LevelBadge level={level || 'a1'} />
+          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>25 ta so'zni yodlang</span>
+        </div>
 
-        {!selectedChapter ? (
-          <>
-            {/* Lektion tanlash */}
-            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 12 }}>
-              Lektsiyani tanlang ({chapters.length} ta):
+        {/* Words List */}
+        {SAMPLE_VOCAB_25.map((word, i) => (
+          <div key={i} className="glass-card" style={{ padding: 12, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{
+              width: 28, height: 28, borderRadius: '50%', background: 'var(--surface-glass)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', flexShrink: 0,
+            }}>
+              {i + 1}
+            </span>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                <span style={{
+                  fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4,
+                  background: word.art === 'der' ? 'rgba(74,159,231,0.2)' : word.art === 'die' ? 'rgba(248,113,113,0.2)' : 'rgba(74,222,128,0.2)',
+                  color: word.art === 'der' ? '#4A9FE7' : word.art === 'die' ? '#F87171' : '#4ADE80',
+                }}>
+                  {word.art}
+                </span>
+                <span style={{ fontSize: 14, fontWeight: 600, color: 'white' }}>{word.de.replace(`${word.art} `, '')}</span>
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{word.uz}</div>
+              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>{word.note}</div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-              {chapters.map((ch) => {
-                const wc = db?.[level]?.[book]?.[ch]?.length || 0;
-                return (
-                  <button
-                    key={ch}
-                    className="glass-card glass-card-hover"
-                    onClick={() => { haptic('light'); setSelectedChapter(ch); }}
-                    style={{ padding: '12px 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, cursor: 'pointer' }}
-                  >
-                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent-blue)' }}>{ch.replace('Lektion ', 'L')}</span>
-                    <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{wc} so'z</span>
-                  </button>
-                );
-              })}
-            </div>
-          </>
+          </div>
+        ))}
+
+        <div style={{ height: 100 }} />
+      </div>
+
+      {/* Bottom Action */}
+      <div style={{
+        position: 'sticky', bottom: 0, padding: 16,
+        background: 'linear-gradient(0deg, rgba(11,29,58,0.95) 0%, rgba(11,29,58,0.6) 100%)',
+        backdropFilter: 'blur(12px)',
+      }}>
+        {!learned ? (
+          <button
+            className="gradient-btn"
+            onClick={() => {
+              haptic('success');
+              setLearned(true);
+            }}
+          >
+            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+              <CheckCircle2 size={18} /> Yodladim ✅
+            </span>
+          </button>
         ) : (
-          <>
-            {/* So'zlar ro'yxati */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-              <button
-                onClick={() => setSelectedChapter(null)}
-                style={{ background: 'var(--surface-glass)', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: '4px 10px', color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer' }}
-              >
-                ← Lektsiyalar
-              </button>
-              <span style={{ fontSize: 13, fontWeight: 600, color: 'white' }}>{selectedChapter}</span>
-              <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 'auto' }}>{words.length} ta so'z</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div className="glass-card" style={{ padding: 12, textAlign: 'center' }}>
+              <div style={{ fontSize: 13, fontWeight: 600, fontStyle: 'italic', color: 'var(--accent-green)' }}>
+                Ajoyib! Endi hikoya va prezentatsiyani ko'ring!
+              </div>
             </div>
-
-            {words.map((word, i) => {
-              const art = word.article || '';
-              const artColor = ART_COLOR[art] || 'var(--text-muted)';
-              return (
-                <div key={i} className="glass-card" style={{ padding: '10px 14px', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{
-                    width: 26, height: 26, borderRadius: '50%', background: 'var(--surface-glass)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', flexShrink: 0,
-                  }}>{i + 1}</span>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                      {art && (
-                        <span style={{
-                          fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4,
-                          background: `${artColor}25`, color: artColor,
-                        }}>{art}</span>
-                      )}
-                      <span style={{ fontSize: 14, fontWeight: 600, color: 'white' }}>{word.german}</span>
-                    </div>
-                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{word.uzbek}</div>
-                  </div>
-                </div>
-              );
-            })}
-            <div style={{ height: 40 }} />
-          </>
+            <button
+              className="gradient-btn"
+              onClick={() => {
+                haptic('medium');
+                onNavigate('aktiv_story', { level, topicName });
+              }}
+            >
+              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                <PlayCircle size={18} /> Hikoya va Prezentatsiya 🎬
+              </span>
+            </button>
+          </div>
         )}
       </div>
     </div>
@@ -1018,19 +965,57 @@ function AktivWordsScreen({ payload, onNavigate, onBack }: { payload: any; onNav
 // ==================== AKTIV STORY SCREEN ====================
 function AktivStoryScreen({ payload, onBack }: { payload: any; onBack: () => void }) {
   const { level, topicName } = payload || {};
-  const story = `Eines Tages beschloss ich, eine Reise durch die Stadt zu machen. Ich ging zu Fuß und sah viele schöne Häuser, blühende Blumen in jedem Garten, und freundliche Menschen auf der Straße. Ich traf meinen alten Freund, der gerade aus der Schule kam. Wir gingen zusammen in ein kleines Café und bestellten Wasser und Brot.`;
+  const story = `Eines Tages beschloss ich, eine Reise durch die Stadt zu machen. Ich ging zu Fuß und sah viele schöne Häuser, blühende Blumen in jedem Garten, und freundliche Menschen auf der Straße. Ich traf meinen alten Freund, der gerade aus der Schule kam. Wir gingen zusammen in ein kleines Café und bestellten Wasser und Brot. Mein Freund erzählte mir von seinem neuen Beruf und seiner großen Familie. Er wohnt jetzt in einem neuen Haus am Stadtrand. Das Wetter war wunderbar, und wir beschlossen, einen Spaziergang im Park zu machen. Dort sahen wir Kinder, die fröhlich spielten, und einen Hund, der einem Ball hinterherlief. Es war ein Tag voller Freude und guter Gespräche. Am Abend kehrte ich nach Hause zurück, voller schöner Erinnerungen.`;
 
   return (
     <div className="view-enter" style={{ position: 'relative', zIndex: 1, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <ScreenHeader title="Hikoya" onBack={onBack} />
+      <ScreenHeader title="Hikoya va Prezentatsiya" onBack={onBack} />
       <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-          <LevelBadge level={(level || 'a1').toLowerCase()} />
+          <LevelBadge level={level || 'a1'} />
           <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{topicName || 'Mavzu'}</span>
         </div>
+
         <div className="glass-card" style={{ padding: 16, marginBottom: 16 }}>
-          <p style={{ fontSize: 14, lineHeight: 1.8, color: 'var(--text-secondary)', margin: 0 }}>{story}</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <BookOpen size={16} color="var(--accent-blue)" />
+            <span style={{ fontSize: 13, fontWeight: 600, fontStyle: 'italic', color: 'var(--accent-blue)' }}>Hikoya (25 ta so'z bilan)</span>
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.8, fontStyle: 'italic' }}>
+            {story}
+          </div>
         </div>
+
+        <div className="glass-card" style={{ padding: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <Mic size={16} color="var(--accent-green)" />
+            <span style={{ fontSize: 13, fontWeight: 600, fontStyle: 'italic', color: 'var(--accent-green)' }}>Prezentatsiya rejasi</span>
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.8 }}>
+            1. <strong style={{ color: 'white' }}>Einführung</strong> — Sich vorstellen, das Thema nennen.
+            <br />
+            2. <strong style={{ color: 'white' }}>Hauptteil</strong> — 5-6 Sätze über das Thema mit neuen Wörtern.
+            <br />
+            3. <strong style={{ color: 'white' }}>Beispiele</strong> — Zwei kurze Beispiele aus dem Leben.
+            <br />
+            4. <strong style={{ color: 'white' }}>Schluss</strong> — Zusammenfassung und eigene Meinung.
+            <br /><br />
+            <span style={{ color: 'var(--accent-amber)' }}>💡 Maslahat: Hikoyani 10 daqiqa ichida yodlang. So'zlarni kontekstda yodlash ko'proq samarali!</span>
+          </div>
+        </div>
+
+        <button
+          className="gradient-btn"
+          style={{ marginTop: 16 }}
+          onClick={() => {
+            haptic('success');
+            alert('Tabriklaymiz! Bu mavzu aktivlashtirildi. Har kuni shu bilan davom eting!');
+          }}
+        >
+          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+            <CheckCircle2 size={18} /> Tugatdim — Keyingi mavzuga o'tish
+          </span>
+        </button>
       </div>
     </div>
   );
