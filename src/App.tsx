@@ -948,7 +948,7 @@ function AktivWordsScreen({ payload, onNavigate, onBack }: { payload: any; onNav
               className="gradient-btn"
               onClick={() => {
                 haptic('medium');
-                onNavigate('aktiv_story', { level, topicName });
+                onNavigate('aktiv_story', { level, topicName, words: SAMPLE_VOCAB_25 });
               }}
             >
               <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
@@ -964,58 +964,228 @@ function AktivWordsScreen({ payload, onNavigate, onBack }: { payload: any; onNav
 
 // ==================== AKTIV STORY SCREEN ====================
 function AktivStoryScreen({ payload, onBack }: { payload: any; onBack: () => void }) {
-  const { level, topicName } = payload || {};
-  const story = `Eines Tages beschloss ich, eine Reise durch die Stadt zu machen. Ich ging zu Fuß und sah viele schöne Häuser, blühende Blumen in jedem Garten, und freundliche Menschen auf der Straße. Ich traf meinen alten Freund, der gerade aus der Schule kam. Wir gingen zusammen in ein kleines Café und bestellten Wasser und Brot. Mein Freund erzählte mir von seinem neuen Beruf und seiner großen Familie. Er wohnt jetzt in einem neuen Haus am Stadtrand. Das Wetter war wunderbar, und wir beschlossen, einen Spaziergang im Park zu machen. Dort sahen wir Kinder, die fröhlich spielten, und einen Hund, der einem Ball hinterherlief. Es war ein Tag voller Freude und guter Gespräche. Am Abend kehrte ich nach Hause zurück, voller schöner Erinnerungen.`;
+  const { level, topicName, words } = payload || {};
+  const [storyDe, setStoryDe] = useState('');
+  const [storyUz, setStoryUz] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [showTranslation, setShowTranslation] = useState(false);
+  const [generated, setGenerated] = useState(false);
+
+  const levelLabels: Record<string, string> = {
+    a1: 'A1 — Boshlang\'ich (juda oddiy jumlalar)',
+    a2: 'A2 — Elementar (oddiy, kichik gaplar)',
+    b1: 'B1 — O\'rta (tabiiy, turli fe\'l zamonlari)',
+    b2: 'B2 — O\'rta-yuqori (murakkab, boy leksika)',
+    c1: 'C1 — Ilg\'or (akademik, murakkab konstruksiyalar)',
+  };
+
+  const levelInstruction: Record<string, string> = {
+    a1: 'Juda oddiy, qisqa jumlalar. Faqat hozirgi zamon (Präsens). Eng ko\'p 8-10 ta so\'z har jumlada. Bolalar uchun yoziladigan darajada.',
+    a2: 'Oddiy jumlalar. Präsens va Perfekt ishlatish mumkin. 10-12 ta so\'z har jumlada. Kundalik hayot haqida.',
+    b1: 'Tabiiy jumlalar. Präsens, Perfekt, Präteritum. Turli bog\'lovchilar (weil, dass, obwohl). 12-15 ta so\'z.',
+    b2: 'Boyitilgan leksika. Konjunktiv II, Passiv, Relativsatz. Murakkabroq g\'oyalar va tahlil. 15-20 ta so\'z.',
+    c1: 'Akademik uslub. Barcha grammatik konstruksiyalar. Abstrakt tushunchalar, murakkab argumentlar. 20+ ta so\'z.',
+  };
+
+  const vocabList = words && words.length > 0
+    ? words.map((w: VocabWord) => `${w.de} (${w.uz})`).join(', ')
+    : SAMPLE_VOCAB_25.map(w => `${w.de} (${w.uz})`).join(', ');
+
+  const generateStory = async () => {
+    setLoading(true);
+    setError('');
+    setStoryDe('');
+    setStoryUz('');
+    setShowTranslation(false);
+
+    const groqKey = (window as any).__GROQ_KEY__ || import.meta.env.VITE_GROQ_KEY || '';
+    if (!groqKey) {
+      setError('GROQ API kaliti topilmadi. .env faylida VITE_GROQ_KEY ni sozlang.');
+      setLoading(false);
+      return;
+    }
+
+    const prompt = `Sen nemis tili o'qituvchisisisan. Quyidagi so'zlardan foydalanib ${level?.toUpperCase() || 'A1'} darajasiga mos chiroyli, mantiqli, uzun hikoya yoz.
+
+Mavzu: "${topicName || 'Kundalik hayot'}"
+Daraja: ${level?.toUpperCase() || 'A1'} — ${levelLabels[level] || levelLabels['a1']}
+Grammatika ko'rsatmasi: ${levelInstruction[level] || levelInstruction['a1']}
+
+Ishlatish kerak bo'lgan so'zlar: ${vocabList}
+
+QOIDALAR:
+- Kamida 15-20 ta jumla yoz, bir-biriga bog'liq, mantiqli voqea
+- Har bir so'zni kamida bir marta tabiiy ishlatib chiq
+- Hikoya qiziqarli va hayotiy bo'lsin
+- So'zlarni sun'iy tiqma, tabiiy kontekstda ishlat
+- Faqat quyidagi formatda javob ber, boshqa hech narsa yozma:
+
+DEUTSCH:
+[hikoya nemischa]
+
+UZBEK:
+[hikoya o'zbekcha tarjimasi, jumlama-jumla]`;
+
+    try {
+      const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${groqKey}` },
+        body: JSON.stringify({
+          model: 'llama3-70b-8192',
+          messages: [{ role: 'user', content: prompt }],
+          max_tokens: 2000,
+          temperature: 0.7,
+        }),
+      });
+
+      if (!resp.ok) {
+        setError('Groq API xatosi. Qaytadan urinib ko\'ring.');
+        setLoading(false);
+        return;
+      }
+
+      const data = await resp.json();
+      const text = data.choices?.[0]?.message?.content || '';
+
+      const deMatch = text.match(/DEUTSCH:\s*([\s\S]*?)(?=UZBEK:|$)/i);
+      const uzMatch = text.match(/UZBEK:\s*([\s\S]*?)$/i);
+
+      setStoryDe(deMatch ? deMatch[1].trim() : text.trim());
+      setStoryUz(uzMatch ? uzMatch[1].trim() : '');
+      setGenerated(true);
+      haptic('success');
+    } catch {
+      setError('Internet muammosi yoki API xatosi.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="view-enter" style={{ position: 'relative', zIndex: 1, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <ScreenHeader title="Hikoya va Prezentatsiya" onBack={onBack} />
+      <ScreenHeader title="AI Hikoya Generator" onBack={onBack} />
       <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+
+        {/* Header info */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
           <LevelBadge level={level || 'a1'} />
-          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{topicName || 'Mavzu'}</span>
+          <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>{topicName || 'Mavzu'}</span>
         </div>
 
-        <div className="glass-card" style={{ padding: 16, marginBottom: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-            <BookOpen size={16} color="var(--accent-blue)" />
-            <span style={{ fontSize: 13, fontWeight: 600, fontStyle: 'italic', color: 'var(--accent-blue)' }}>Hikoya (25 ta so'z bilan)</span>
+        {/* Generate button */}
+        {!generated && (
+          <div className="glass-card" style={{ padding: 20, marginBottom: 16, textAlign: 'center' }}>
+            <div style={{ fontSize: 32, marginBottom: 8 }}>📖</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'white', marginBottom: 6 }}>
+              Groq AI bilan hikoya yaratish
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 16, lineHeight: 1.6 }}>
+              {level?.toUpperCase()} darajasiga mos, barcha so'zlar ishlatilgan, mantiqli va uzun hikoya yaratiladi. Nemischa va o'zbekcha tarjimasi bilan.
+            </div>
+            <button
+              className="gradient-btn"
+              onClick={generateStory}
+              disabled={loading}
+            >
+              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                {loading ? (
+                  <>
+                    <span style={{ display: 'inline-block', width: 16, height: 16, border: '2px solid white', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                    Hikoya yaratilmoqda...
+                  </>
+                ) : (
+                  <><BookOpen size={18} /> Hikoya yaratish</>
+                )}
+              </span>
+            </button>
+            {error && (
+              <div style={{ marginTop: 12, padding: 10, background: 'rgba(239,68,68,0.15)', borderRadius: 8, fontSize: 12, color: '#F87171' }}>
+                ⚠️ {error}
+              </div>
+            )}
           </div>
-          <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.8, fontStyle: 'italic' }}>
-            {story}
-          </div>
-        </div>
+        )}
 
-        <div className="glass-card" style={{ padding: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-            <Mic size={16} color="var(--accent-green)" />
-            <span style={{ fontSize: 13, fontWeight: 600, fontStyle: 'italic', color: 'var(--accent-green)' }}>Prezentatsiya rejasi</span>
-          </div>
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.8 }}>
-            1. <strong style={{ color: 'white' }}>Einführung</strong> — Sich vorstellen, das Thema nennen.
-            <br />
-            2. <strong style={{ color: 'white' }}>Hauptteil</strong> — 5-6 Sätze über das Thema mit neuen Wörtern.
-            <br />
-            3. <strong style={{ color: 'white' }}>Beispiele</strong> — Zwei kurze Beispiele aus dem Leben.
-            <br />
-            4. <strong style={{ color: 'white' }}>Schluss</strong> — Zusammenfassung und eigene Meinung.
-            <br /><br />
-            <span style={{ color: 'var(--accent-amber)' }}>💡 Maslahat: Hikoyani 10 daqiqa ichida yodlang. So'zlarni kontekstda yodlash ko'proq samarali!</span>
-          </div>
-        </div>
+        {/* Story output */}
+        {generated && storyDe && (
+          <>
+            <div className="glass-card" style={{ padding: 16, marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <BookOpen size={16} color="var(--accent-blue)" />
+                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent-blue)' }}>
+                    Hikoya — {level?.toUpperCase()} daraja
+                  </span>
+                </div>
+                <span style={{ fontSize: 10, color: 'var(--text-muted)', background: 'rgba(255,255,255,0.08)', padding: '3px 8px', borderRadius: 10 }}>
+                  🇩🇪 Deutsch
+                </span>
+              </div>
+              <div style={{ fontSize: 13, color: 'white', lineHeight: 2, fontStyle: 'italic', whiteSpace: 'pre-line' }}>
+                {storyDe}
+              </div>
+            </div>
 
-        <button
-          className="gradient-btn"
-          style={{ marginTop: 16 }}
-          onClick={() => {
-            haptic('success');
-            alert('Tabriklaymiz! Bu mavzu aktivlashtirildi. Har kuni shu bilan davom eting!');
-          }}
-        >
-          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-            <CheckCircle2 size={18} /> Tugatdim — Keyingi mavzuga o'tish
-          </span>
-        </button>
+            {/* Translation toggle */}
+            <button
+              onClick={() => { setShowTranslation(!showTranslation); haptic('light'); }}
+              style={{
+                width: '100%', padding: '12px 16px', marginBottom: 12,
+                background: showTranslation ? 'rgba(251,191,36,0.15)' : 'rgba(255,255,255,0.06)',
+                border: `1px solid ${showTranslation ? 'rgba(251,191,36,0.4)' : 'var(--border-subtle)'}`,
+                borderRadius: 12, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                fontSize: 13, fontWeight: 600,
+                color: showTranslation ? 'var(--accent-amber)' : 'var(--text-secondary)',
+              }}
+            >
+              {showTranslation ? '🙈 Tarjimani yashirish' : '🇺🇿 O\'zbek tarjimasini ko\'rish'}
+            </button>
+
+            {showTranslation && storyUz && (
+              <div className="glass-card" style={{ padding: 16, marginBottom: 12, borderColor: 'rgba(251,191,36,0.3)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                  <span style={{ fontSize: 16 }}>🇺🇿</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent-amber)' }}>O'zbek tarjimasi</span>
+                </div>
+                <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 2, whiteSpace: 'pre-line' }}>
+                  {storyUz}
+                </div>
+              </div>
+            )}
+
+            {/* Tip */}
+            <div className="glass-card" style={{ padding: 14, marginBottom: 16, background: 'rgba(74,222,128,0.06)', borderColor: 'rgba(74,222,128,0.2)' }}>
+              <div style={{ fontSize: 12, color: 'var(--accent-green)', lineHeight: 1.7 }}>
+                💡 <strong>Maslahat:</strong> Avval nemischa o'qing, keyin o'zbekcha tarjimani tekshiring. Har bir so'zni gap ichida ko'rish yodlashni 3x tezlashtiradi!
+              </div>
+            </div>
+
+            {/* Regenerate & Done */}
+            <button
+              className="gradient-btn"
+              onClick={generateStory}
+              disabled={loading}
+              style={{ marginBottom: 10, background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
+            >
+              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                {loading ? 'Yaratilmoqda...' : <><BookOpen size={18} /> Boshqa hikoya yaratish</>}
+              </span>
+            </button>
+
+            <button
+              className="gradient-btn"
+              onClick={() => { haptic('success'); onBack(); }}
+            >
+              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                <CheckCircle2 size={18} /> Tugatdim ✅
+              </span>
+            </button>
+          </>
+        )}
+
+        <div style={{ height: 40 }} />
       </div>
     </div>
   );
