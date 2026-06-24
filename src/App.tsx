@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
-  Brain, BookOpen, Globe, FolderOpen, Calendar, BarChart3, Settings, ClipboardList,
-  ChevronLeft, Mic, CheckCircle2, XCircle, Star, Lock, PlayCircle, Volume2,
-  FileText, Headphones, Video, Download, ChevronRight, Flag, Sparkles,
-  BookOpenText, GraduationCap, Timer, RotateCcw, Home, Search, Bookmark, User
+  BookOpen, Globe, Calendar, ClipboardList,
+  ChevronLeft, Mic, CheckCircle2, XCircle, Star, Lock, Volume2,
+  FileText, Headphones, Video, Download, ChevronRight, Flag,
+  GraduationCap, Timer, RotateCcw, Home, Bookmark, User
 } from 'lucide-react';
 
 // ==================== TYPES ====================
-type View = 'menu' | 'ai_mentor' | 'vorstellung' | 'aktiv_sprechen' | 'aktiv_topic' | 'aktiv_words' | 'aktiv_story'
+type View = 'menu' | 'vorstellung'
   | 'lugat' | 'lugat_chapters' | 'lugat_words'
   | 'tarjimon'
   | 'sayfa' | 'sayfa_files'
@@ -15,6 +15,7 @@ type View = 'menu' | 'ai_mentor' | 'vorstellung' | 'aktiv_sprechen' | 'aktiv_top
   | 'kunlik_soz'
   | 'progressim'
   | 'sozlamalar'
+  | 'saqlangan'
   | 'test' | 'test_levels' | 'test_sections' | 'test_active' | 'test_result';
 
 type Level = 'a1' | 'a2' | 'b1' | 'b2' | 'c1';
@@ -81,42 +82,6 @@ const SAMPLE_WORDS: VocabWord[] = [
   { de: 'Auto', uz: 'avtomobil', art: 'das', note: 'transport' },
   { de: 'Zeit', uz: 'vaqt', art: 'die', note: 'davom etuvchi narsa' },
   { de: 'Tag', uz: 'kun', art: 'der', note: '24 soat' },
-];
-
-const SAMPLE_TOPICS: Record<string, string[]> = {
-  a1: ['Salomlashish', 'Oila', 'Taomlar', 'Hayvonlar', 'Ranglar', 'Sonlar', 'Kun tartibi', 'Ob-havo', 'Ta`lim', 'Sayohat', 'Uy', 'Kiyim', 'Vaqtlar', 'Mehnat', 'Sport', 'Sog`liq', 'Texnologiya', 'Tabiat', 'Xarid', 'Transport'],
-  a2: ['Oilaviy munosabatlar', 'Oshxona', 'Maktab', 'Dam olish', 'Kasb-hunar', 'Shahar hayoti', 'Qishloq hayoti', 'Bank xizmatlari', 'Pochta', 'Mehmonxona', 'Restoran', 'Teatr', 'Kutubxona', 'Bog`', 'Muzey', 'Aeroport', 'Vokzal', 'Kasalxona', 'Dorixona', 'Zavod'],
-  b1: ['Yangi boshlanuvchilar', 'Mehnat bozori', 'Ta`lim tizimi', 'Sog`liqni saqlash', 'Media va yangiliklar', 'San`at va madaniyat', 'Sport turlari', 'Sayohat rejalashtirish', 'Madaniy tadbirlar', 'Texnologik yangiliklar', 'Atrof-muhit', 'Ijtimoiy masalalar', 'Iqtisodiyot', 'Siyosat', 'Fan va kashfiyotlar', 'Oshxona san`ati', 'Moda va uslub', 'Muziqa', 'Kino', 'Adabiyot'],
-  b2: ['Xalqaro munosabatlar', 'Global iqtisodiyot', 'Ilm-fan', 'Falsafa', 'Psixologiya', 'Huquq', 'Arxitektura', 'Muhandislik', 'Tibbiyot', 'Biotexnologiya', 'Sun`iy intellekt', 'Kosmik tadqiqotlar', 'Energetika', 'Transport tizimi', 'Urbanistika', 'Antropologiya', 'Sotsiologiya', 'Tarix', 'Lingvistika', 'Pedagogika'],
-  c1: ['Diplomatiya', 'Strategik menejment', 'Ilmiy tadqiqotlar', 'Innovatsion texnologiyalar', 'Xalqaro huquq', 'Moliya bozori', 'Kiberxavfsizlik', 'Biologik xilma-xillik', 'Iqlim o`zgarishi', 'Barqaror rivojlanish', 'Raqamli iqtisodiyot', 'Global sog`liqni saqlash', 'Ta`lim siyosati', 'Axborot erkinligi', 'Inson huquqlari', 'Madaniylararo dialog', 'Kelajak kasblari', 'Aqlli shaharlar', 'Virtual reallik', 'Kvant hisoblash'],
-};
-
-const SAMPLE_VOCAB_25: VocabWord[] = [
-  { de: 'der Tisch', uz: 'stol', art: 'der', note: 'mebel, ovqatlanish uchun' },
-  { de: 'die Lampe', uz: 'chiroq', art: 'die', note: 'yoritish qurilmasi' },
-  { de: 'das Fenster', uz: 'deraza', art: 'das', note: 'uyning devor qismi' },
-  { de: 'der Stuhl', uz: 'stul', art: 'der', note: "o'tirish mebeli" },
-  { de: 'die Tasche', uz: 'sumka', art: 'die', note: 'narsalarni tashish uchun' },
-  { de: 'das Buch', uz: 'kitob', art: 'das', note: "o'qish materyali" },
-  { de: 'der Lehrer', uz: "o'qituvchi", art: 'der', note: 'ta`lim beruvchi' },
-  { de: 'die Schule', uz: 'maktab', art: 'die', note: "o'quv muassasasi" },
-  { de: 'das Haus', uz: 'uy', art: 'das', note: 'yashash joyi' },
-  { de: 'der Garten', uz: "bog'", art: 'der', note: "uy atrofidagi yashil maydon" },
-  { de: 'die Blume', uz: 'gul', art: 'die', note: "o'sadigan o'simlik" },
-  { de: 'das Wasser', uz: 'suv', art: 'das', note: 'hayot uchun zarur' },
-  { de: 'der Hund', uz: 'it', art: 'der', note: 'uy hayvoni' },
-  { de: 'die Katze', uz: 'mushuk', art: 'die', note: 'kichik uy hayvoni' },
-  { de: 'das Essen', uz: 'taom', art: 'das', note: 'ovqatlanish' },
-  { de: 'der Freund', uz: "do'st", art: 'der', note: 'yaqin inson' },
-  { de: 'die Stadt', uz: 'shahar', art: 'die', note: 'katta aholi punkti' },
-  { de: 'das Land', uz: 'mamlakat', art: 'das', note: 'davlat, hudud' },
-  { de: 'der Beruf', uz: 'kasb', art: 'der', note: 'ish, faoliyat' },
-  { de: 'die Familie', uz: 'oila', art: 'die', note: 'yaqin qarindoshlar' },
-  { de: 'das Kind', uz: 'bola', art: 'das', note: 'kichik yoshdagilar' },
-  { de: 'der Mann', uz: 'erkak', art: 'der', note: 'katta yoshdagi erkak' },
-  { de: 'die Frau', uz: 'ayol', art: 'die', note: 'katta yoshdagi ayol' },
-  { de: 'das Auto', uz: 'mashina', art: 'das', note: 'transport vositasi' },
-  { de: 'der Weg', uz: "yo'l", art: 'der', note: "harakatlanish yo'li" },
 ];
 
 const SAMPLE_TESTS: Record<string, TestQuestion[]> = {
@@ -477,14 +442,10 @@ function LevelBadge({ level }: { level: string }) {
 // ==================== MAIN MENU SCREEN ====================
 function MainMenu({ onNavigate }: { onNavigate: (v: View, payload?: any) => void }) {
   const menuItems = [
-    { icon: Brain, label: 'AI Mentor', view: 'ai_mentor' as View },
-    { icon: BookOpenText, label: "Lug'at", view: 'lugat' as View },
-    { icon: Globe, label: 'Tarjimon', view: 'tarjimon' as View },
-    { icon: BookOpen, label: 'Sayfa', view: 'sayfa' as View },
-    { icon: FolderOpen, label: 'Kitob', view: 'kitob' as View },
-    { icon: Calendar, label: "Kunlik so'z", view: 'kunlik_soz' as View },
-    { icon: BarChart3, label: 'Progressim', view: 'progressim' as View },
-    { icon: Settings, label: 'Sozlamalar', view: 'sozlamalar' as View },
+    { icon: Mic, label: 'Vorstellung', view: 'vorstellung' as View, gradient: 'linear-gradient(135deg, #1E5F9E, #4A9FE7)' },
+    { icon: Calendar, label: "Kunlik so'z", view: 'kunlik_soz' as View, gradient: 'linear-gradient(135deg, #2E9E6F, #4AE7A0)' },
+    { icon: ClipboardList, label: 'Test', view: 'test' as View, gradient: 'linear-gradient(135deg, #F59E0B, #FBBF24)' },
+    { icon: Globe, label: 'Tarjima', view: 'tarjimon' as View, gradient: 'linear-gradient(135deg, #9E4AE7, #C77DFF)' },
   ];
 
   return (
@@ -531,62 +492,59 @@ function MainMenu({ onNavigate }: { onNavigate: (v: View, payload?: any) => void
           onClick={() => { haptic('light'); onNavigate('sozlamalar'); }}
           style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--surface-glass)', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'white' }}
         >
-          <Settings size={18} />
+          <User size={18} />
         </button>
       </div>
 
       {/* Welcome Banner */}
       <div style={{ padding: '8px 16px 16px' }}>
         <div className="glass-card shimmer" style={{ padding: 16, textAlign: 'center' }}>
-          <div style={{ fontSize: 14, fontWeight: 600, fontStyle: 'italic', color: 'white' }}>
-            Salom! 🇩🇪 Nemis tilini biz bilan o'rganing
+          <div style={{ fontSize: 15, fontWeight: 700, fontStyle: 'italic', color: 'white' }}>
+            Herzlich willkommen, die Gäste 🇩🇪😊
           </div>
-          <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>
-            Kunning bir so'zi, bir lug'at, bir qadam...
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
+            Xush kelibsiz, mehmonlar!
           </div>
         </div>
       </div>
 
-      {/* Menu Grid */}
+      {/* Menu Grid - 4 cards */}
       <div style={{ flex: 1, padding: '0 16px 24px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
           {menuItems.map((item) => (
-            <div key={item.view} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-              <button
-                className="menu-circle-btn"
-                onClick={() => {
-                  haptic('light');
-                  onNavigate(item.view);
-                }}
-                style={{ animation: 'pulse-glow 3s ease-in-out infinite' }}
-              >
-                <item.icon size={24} strokeWidth={1.5} />
-                <span className="label">{item.label}</span>
-              </button>
-            </div>
-          ))}
-        </div>
-
-        {/* Test Button - Centered */}
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 20 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
             <button
-              className="menu-circle-btn"
-              onClick={() => {
-                haptic('light');
-                onNavigate('test');
-              }}
+              key={item.view}
+              className="glass-card glass-card-hover"
+              onClick={() => { haptic('light'); onNavigate(item.view); }}
               style={{
-                width: 80,
-                height: 80,
-                background: 'linear-gradient(135deg, #F59E0B, #FBBF24)',
-                boxShadow: '0 4px 24px rgba(245, 158, 11, 0.35)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 10,
+                padding: '28px 12px',
+                border: 'none',
+                cursor: 'pointer',
+                fontFamily: "'Montserrat', sans-serif",
               }}
             >
-              <ClipboardList size={28} strokeWidth={1.5} />
-              <span className="label" style={{ fontSize: 10 }}>Test</span>
+              <div
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: 16,
+                  background: item.gradient,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 4px 18px rgba(0,0,0,0.25)',
+                }}
+              >
+                <item.icon size={26} strokeWidth={1.5} color="white" />
+              </div>
+              <span style={{ fontSize: 14, fontWeight: 600, fontStyle: 'italic', color: 'white' }}>{item.label}</span>
             </button>
-          </div>
+          ))}
         </div>
       </div>
 
@@ -607,14 +565,13 @@ function MainMenu({ onNavigate }: { onNavigate: (v: View, payload?: any) => void
         }}
       >
         {[
-          { icon: Home, label: 'Asosiy' },
-          { icon: Search, label: 'Qidiruv' },
-          { icon: Bookmark, label: 'Saqlangan' },
-          { icon: User, label: 'Profil' },
+          { icon: Home, label: 'Asosiy', view: 'menu' as View },
+          { icon: Bookmark, label: 'Saqlangan', view: 'saqlangan' as View },
+          { icon: User, label: 'Profil', view: 'sozlamalar' as View },
         ].map((tab, i) => (
           <button
             key={tab.label}
-            onClick={() => haptic('light')}
+            onClick={() => { haptic('light'); onNavigate(tab.view); }}
             style={{
               display: 'flex',
               flexDirection: 'column',
@@ -632,65 +589,6 @@ function MainMenu({ onNavigate }: { onNavigate: (v: View, payload?: any) => void
             {i === 0 && <div style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--accent-blue)', marginTop: 2 }} />}
           </button>
         ))}
-      </div>
-    </div>
-  );
-}
-
-// ==================== AI MENTOR SCREEN ====================
-function AIMentorScreen({ onNavigate, onBack }: { onNavigate: (v: View, p?: any) => void; onBack: () => void }) {
-  return (
-    <div className="view-enter" style={{ position: 'relative', zIndex: 1, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <ScreenHeader title="AI Mentor" onBack={onBack} />
-      <div style={{ flex: 1, padding: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
-        {/* Vorstellung Card */}
-        <button
-          className="glass-card glass-card-hover"
-          onClick={() => { haptic('light'); onNavigate('vorstellung'); }}
-          style={{ display: 'flex', alignItems: 'center', gap: 16, padding: 20, textAlign: 'left', width: '100%' }}
-        >
-          <div style={{ width: 56, height: 56, borderRadius: 16, background: 'linear-gradient(135deg, #8B5CF6, #A78BFA)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <Mic size={28} color="white" strokeWidth={1.5} />
-          </div>
-          <div>
-            <div style={{ fontSize: 15, fontWeight: 600, fontStyle: 'italic', color: 'white' }}>Vorstellung</div>
-            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
-              O'zingizni taqdim eting — 7 ta savolga javob bering, AI tahlil qiladi
-            </div>
-          </div>
-          <ChevronRight size={20} color="var(--text-muted)" style={{ marginLeft: 'auto', flexShrink: 0 }} />
-        </button>
-
-        {/* Aktiv Sprechen Card */}
-        <button
-          className="glass-card glass-card-hover"
-          onClick={() => { haptic('light'); onNavigate('aktiv_sprechen'); }}
-          style={{ display: 'flex', alignItems: 'center', gap: 16, padding: 20, textAlign: 'left', width: '100%' }}
-        >
-          <div style={{ width: 56, height: 56, borderRadius: 16, background: 'linear-gradient(135deg, #10B981, #34D399)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <Volume2 size={28} color="white" strokeWidth={1.5} />
-          </div>
-          <div>
-            <div style={{ fontSize: 15, fontWeight: 600, fontStyle: 'italic', color: 'white' }}>Aktiv Sprechen</div>
-            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
-              Ovozli lug'at — 25 ta so'z, hikoya va prezentatsiya
-            </div>
-          </div>
-          <ChevronRight size={20} color="var(--text-muted)" style={{ marginLeft: 'auto', flexShrink: 0 }} />
-        </button>
-
-        {/* Info Card */}
-        <div className="glass-card" style={{ padding: 16, marginTop: 'auto' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <Sparkles size={16} color="var(--accent-amber)" />
-            <span style={{ fontSize: 13, fontWeight: 600, fontStyle: 'italic', color: 'var(--accent-amber)' }}>AI imkoniyatlari</span>
-          </div>
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-            • Vorstellung: O'zingizni 7 ta nuqtada taqdim eting, AI sizning gapirish darajangizni tahlil qiladi va PDF hisobot beradi.
-            <br />
-            • Aktiv Sprechen: Har mavzuda 25 ta so'z yodlang, keyin AI hikoya yaratib, prezentatsiya tayyorlaydi.
-          </div>
-        </div>
       </div>
     </div>
   );
@@ -794,398 +692,6 @@ function VorstellungScreen({ onBack }: { onBack: () => void }) {
             </button>
           </div>
         )}
-      </div>
-    </div>
-  );
-}
-
-// ==================== AKTIV SPRECHEN SCREEN ====================
-function AktivSprechenScreen({ onNavigate, onBack }: { onNavigate: (v: View, p?: any) => void; onBack: () => void }) {
-  const [selectedLevel, setSelectedLevel] = useState<Level>('a1');
-  const levels: Level[] = ['a1', 'a2', 'b1', 'b2', 'c1'];
-  const topics = SAMPLE_TOPICS[selectedLevel] || [];
-
-  return (
-    <div className="view-enter" style={{ position: 'relative', zIndex: 1, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <ScreenHeader title="Aktiv Sprechen" onBack={onBack} />
-      <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
-        {/* Info */}
-        <div className="glass-card" style={{ padding: 12, marginBottom: 16 }}>
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-            <Volume2 size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 6, color: 'var(--accent-green)' }} />
-            Darajangizni tanlang, mavzuni oching, 25 ta so'zni yodlang va AI hikoyasini eshiting!
-          </div>
-        </div>
-
-        {/* Level Selector */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-          {levels.map((lvl) => (
-            <button
-              key={lvl}
-              onClick={() => { haptic('light'); setSelectedLevel(lvl); }}
-              style={{
-                padding: '8px 20px',
-                borderRadius: 20,
-                border: '1px solid',
-                borderColor: selectedLevel === lvl ? LEVEL_COLORS[lvl] : 'var(--border-subtle)',
-                background: selectedLevel === lvl ? `${LEVEL_COLORS[lvl]}25` : 'var(--surface-glass)',
-                color: selectedLevel === lvl ? LEVEL_COLORS[lvl] : 'var(--text-secondary)',
-                fontFamily: "'Montserrat', sans-serif",
-                fontWeight: 700,
-                fontStyle: 'italic',
-                fontSize: 13,
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-              }}
-            >
-              {lvl.toUpperCase()}
-            </button>
-          ))}
-        </div>
-
-        {/* Topics Grid */}
-        <div style={{ fontSize: 13, fontWeight: 600, fontStyle: 'italic', color: 'var(--text-secondary)', marginBottom: 10 }}>
-          Mavzular ({topics.length} ta)
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8 }}>
-          {topics.map((topic, i) => (
-            <button
-              key={i}
-              className="glass-card glass-card-hover"
-              onClick={() => {
-                haptic('light');
-                onNavigate('aktiv_words', { level: selectedLevel, topicIndex: i, topicName: topic });
-              }}
-              style={{
-                padding: '12px 8px',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 4,
-                cursor: 'pointer',
-              }}
-            >
-              <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--accent-blue)' }}>{i + 1}</span>
-              <span style={{ fontSize: 9, color: 'var(--text-secondary)', textAlign: 'center', lineHeight: 1.3 }}>{topic}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ==================== AKTIV WORDS SCREEN ====================
-function AktivWordsScreen({ payload, onNavigate, onBack }: { payload: any; onNavigate: (v: View, p?: any) => void; onBack: () => void }) {
-  const [learned, setLearned] = useState(false);
-  const { level, topicName } = payload || {};
-
-  return (
-    <div className="view-enter" style={{ position: 'relative', zIndex: 1, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <ScreenHeader title={`${topicName || 'Mavzu'} — 25 ta so'z`} onBack={onBack} />
-      <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-          <LevelBadge level={level || 'a1'} />
-          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>25 ta so'zni yodlang</span>
-        </div>
-
-        {/* Words List */}
-        {SAMPLE_VOCAB_25.map((word, i) => (
-          <div key={i} className="glass-card" style={{ padding: 12, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{
-              width: 28, height: 28, borderRadius: '50%', background: 'var(--surface-glass)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', flexShrink: 0,
-            }}>
-              {i + 1}
-            </span>
-            <div style={{ flex: 1 }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                <span style={{
-                  fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4,
-                  background: word.art === 'der' ? 'rgba(74,159,231,0.2)' : word.art === 'die' ? 'rgba(248,113,113,0.2)' : 'rgba(74,222,128,0.2)',
-                  color: word.art === 'der' ? '#4A9FE7' : word.art === 'die' ? '#F87171' : '#4ADE80',
-                }}>
-                  {word.art}
-                </span>
-                <span style={{ fontSize: 14, fontWeight: 600, color: 'white' }}>{word.de.replace(`${word.art} `, '')}</span>
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{word.uz}</div>
-              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>{word.note}</div>
-            </div>
-          </div>
-        ))}
-
-        <div style={{ height: 100 }} />
-      </div>
-
-      {/* Bottom Action */}
-      <div style={{
-        position: 'sticky', bottom: 0, padding: 16,
-        background: 'linear-gradient(0deg, rgba(11,29,58,0.95) 0%, rgba(11,29,58,0.6) 100%)',
-        backdropFilter: 'blur(12px)',
-      }}>
-        {!learned ? (
-          <button
-            className="gradient-btn"
-            onClick={() => {
-              haptic('success');
-              setLearned(true);
-            }}
-          >
-            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-              <CheckCircle2 size={18} /> Yodladim ✅
-            </span>
-          </button>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div className="glass-card" style={{ padding: 12, textAlign: 'center' }}>
-              <div style={{ fontSize: 13, fontWeight: 600, fontStyle: 'italic', color: 'var(--accent-green)' }}>
-                Ajoyib! Endi hikoya va prezentatsiyani ko'ring!
-              </div>
-            </div>
-            <button
-              className="gradient-btn"
-              onClick={() => {
-                haptic('medium');
-                onNavigate('aktiv_story', { level, topicName, words: SAMPLE_VOCAB_25 });
-              }}
-            >
-              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                <PlayCircle size={18} /> Hikoya va Prezentatsiya 🎬
-              </span>
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ==================== AKTIV STORY SCREEN ====================
-function AktivStoryScreen({ payload, onBack }: { payload: any; onBack: () => void }) {
-  const { level, topicName, words } = payload || {};
-  const [storyDe, setStoryDe] = useState('');
-  const [storyUz, setStoryUz] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [showTranslation, setShowTranslation] = useState(false);
-  const [generated, setGenerated] = useState(false);
-
-  const levelLabels: Record<string, string> = {
-    a1: 'A1 — Boshlang\'ich (juda oddiy jumlalar)',
-    a2: 'A2 — Elementar (oddiy, kichik gaplar)',
-    b1: 'B1 — O\'rta (tabiiy, turli fe\'l zamonlari)',
-    b2: 'B2 — O\'rta-yuqori (murakkab, boy leksika)',
-    c1: 'C1 — Ilg\'or (akademik, murakkab konstruksiyalar)',
-  };
-
-  const levelInstruction: Record<string, string> = {
-    a1: 'Juda oddiy, qisqa jumlalar. Faqat hozirgi zamon (Präsens). Eng ko\'p 8-10 ta so\'z har jumlada. Bolalar uchun yoziladigan darajada.',
-    a2: 'Oddiy jumlalar. Präsens va Perfekt ishlatish mumkin. 10-12 ta so\'z har jumlada. Kundalik hayot haqida.',
-    b1: 'Tabiiy jumlalar. Präsens, Perfekt, Präteritum. Turli bog\'lovchilar (weil, dass, obwohl). 12-15 ta so\'z.',
-    b2: 'Boyitilgan leksika. Konjunktiv II, Passiv, Relativsatz. Murakkabroq g\'oyalar va tahlil. 15-20 ta so\'z.',
-    c1: 'Akademik uslub. Barcha grammatik konstruksiyalar. Abstrakt tushunchalar, murakkab argumentlar. 20+ ta so\'z.',
-  };
-
-  const vocabList = words && words.length > 0
-    ? words.map((w: VocabWord) => `${w.de} (${w.uz})`).join(', ')
-    : SAMPLE_VOCAB_25.map(w => `${w.de} (${w.uz})`).join(', ');
-
-  const generateStory = async () => {
-    setLoading(true);
-    setError('');
-    setStoryDe('');
-    setStoryUz('');
-    setShowTranslation(false);
-
-    const groqKey = (window as any).__GROQ_KEY__ || import.meta.env.VITE_GROQ_KEY || '';
-    if (!groqKey) {
-      setError('GROQ API kaliti topilmadi. .env faylida VITE_GROQ_KEY ni sozlang.');
-      setLoading(false);
-      return;
-    }
-
-    const prompt = `Sen nemis tili o'qituvchisisisan. Quyidagi so'zlardan foydalanib ${level?.toUpperCase() || 'A1'} darajasiga mos chiroyli, mantiqli, uzun hikoya yoz.
-
-Mavzu: "${topicName || 'Kundalik hayot'}"
-Daraja: ${level?.toUpperCase() || 'A1'} — ${levelLabels[level] || levelLabels['a1']}
-Grammatika ko'rsatmasi: ${levelInstruction[level] || levelInstruction['a1']}
-
-Ishlatish kerak bo'lgan so'zlar: ${vocabList}
-
-QOIDALAR:
-- Kamida 15-20 ta jumla yoz, bir-biriga bog'liq, mantiqli voqea
-- Har bir so'zni kamida bir marta tabiiy ishlatib chiq
-- Hikoya qiziqarli va hayotiy bo'lsin
-- So'zlarni sun'iy tiqma, tabiiy kontekstda ishlat
-- Faqat quyidagi formatda javob ber, boshqa hech narsa yozma:
-
-DEUTSCH:
-[hikoya nemischa]
-
-UZBEK:
-[hikoya o'zbekcha tarjimasi, jumlama-jumla]`;
-
-    try {
-      const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${groqKey}` },
-        body: JSON.stringify({
-          model: 'llama3-70b-8192',
-          messages: [{ role: 'user', content: prompt }],
-          max_tokens: 2000,
-          temperature: 0.7,
-        }),
-      });
-
-      if (!resp.ok) {
-        setError('Groq API xatosi. Qaytadan urinib ko\'ring.');
-        setLoading(false);
-        return;
-      }
-
-      const data = await resp.json();
-      const text = data.choices?.[0]?.message?.content || '';
-
-      const deMatch = text.match(/DEUTSCH:\s*([\s\S]*?)(?=UZBEK:|$)/i);
-      const uzMatch = text.match(/UZBEK:\s*([\s\S]*?)$/i);
-
-      setStoryDe(deMatch ? deMatch[1].trim() : text.trim());
-      setStoryUz(uzMatch ? uzMatch[1].trim() : '');
-      setGenerated(true);
-      haptic('success');
-    } catch {
-      setError('Internet muammosi yoki API xatosi.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="view-enter" style={{ position: 'relative', zIndex: 1, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <ScreenHeader title="AI Hikoya Generator" onBack={onBack} />
-      <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
-
-        {/* Header info */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-          <LevelBadge level={level || 'a1'} />
-          <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>{topicName || 'Mavzu'}</span>
-        </div>
-
-        {/* Generate button */}
-        {!generated && (
-          <div className="glass-card" style={{ padding: 20, marginBottom: 16, textAlign: 'center' }}>
-            <div style={{ fontSize: 32, marginBottom: 8 }}>📖</div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: 'white', marginBottom: 6 }}>
-              Groq AI bilan hikoya yaratish
-            </div>
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 16, lineHeight: 1.6 }}>
-              {level?.toUpperCase()} darajasiga mos, barcha so'zlar ishlatilgan, mantiqli va uzun hikoya yaratiladi. Nemischa va o'zbekcha tarjimasi bilan.
-            </div>
-            <button
-              className="gradient-btn"
-              onClick={generateStory}
-              disabled={loading}
-            >
-              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                {loading ? (
-                  <>
-                    <span style={{ display: 'inline-block', width: 16, height: 16, border: '2px solid white', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-                    Hikoya yaratilmoqda...
-                  </>
-                ) : (
-                  <><BookOpen size={18} /> Hikoya yaratish</>
-                )}
-              </span>
-            </button>
-            {error && (
-              <div style={{ marginTop: 12, padding: 10, background: 'rgba(239,68,68,0.15)', borderRadius: 8, fontSize: 12, color: '#F87171' }}>
-                ⚠️ {error}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Story output */}
-        {generated && storyDe && (
-          <>
-            <div className="glass-card" style={{ padding: 16, marginBottom: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <BookOpen size={16} color="var(--accent-blue)" />
-                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent-blue)' }}>
-                    Hikoya — {level?.toUpperCase()} daraja
-                  </span>
-                </div>
-                <span style={{ fontSize: 10, color: 'var(--text-muted)', background: 'rgba(255,255,255,0.08)', padding: '3px 8px', borderRadius: 10 }}>
-                  🇩🇪 Deutsch
-                </span>
-              </div>
-              <div style={{ fontSize: 13, color: 'white', lineHeight: 2, fontStyle: 'italic', whiteSpace: 'pre-line' }}>
-                {storyDe}
-              </div>
-            </div>
-
-            {/* Translation toggle */}
-            <button
-              onClick={() => { setShowTranslation(!showTranslation); haptic('light'); }}
-              style={{
-                width: '100%', padding: '12px 16px', marginBottom: 12,
-                background: showTranslation ? 'rgba(251,191,36,0.15)' : 'rgba(255,255,255,0.06)',
-                border: `1px solid ${showTranslation ? 'rgba(251,191,36,0.4)' : 'var(--border-subtle)'}`,
-                borderRadius: 12, cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                fontSize: 13, fontWeight: 600,
-                color: showTranslation ? 'var(--accent-amber)' : 'var(--text-secondary)',
-              }}
-            >
-              {showTranslation ? '🙈 Tarjimani yashirish' : '🇺🇿 O\'zbek tarjimasini ko\'rish'}
-            </button>
-
-            {showTranslation && storyUz && (
-              <div className="glass-card" style={{ padding: 16, marginBottom: 12, borderColor: 'rgba(251,191,36,0.3)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                  <span style={{ fontSize: 16 }}>🇺🇿</span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent-amber)' }}>O'zbek tarjimasi</span>
-                </div>
-                <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 2, whiteSpace: 'pre-line' }}>
-                  {storyUz}
-                </div>
-              </div>
-            )}
-
-            {/* Tip */}
-            <div className="glass-card" style={{ padding: 14, marginBottom: 16, background: 'rgba(74,222,128,0.06)', borderColor: 'rgba(74,222,128,0.2)' }}>
-              <div style={{ fontSize: 12, color: 'var(--accent-green)', lineHeight: 1.7 }}>
-                💡 <strong>Maslahat:</strong> Avval nemischa o'qing, keyin o'zbekcha tarjimani tekshiring. Har bir so'zni gap ichida ko'rish yodlashni 3x tezlashtiradi!
-              </div>
-            </div>
-
-            {/* Regenerate & Done */}
-            <button
-              className="gradient-btn"
-              onClick={generateStory}
-              disabled={loading}
-              style={{ marginBottom: 10, background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
-            >
-              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                {loading ? 'Yaratilmoqda...' : <><BookOpen size={18} /> Boshqa hikoya yaratish</>}
-              </span>
-            </button>
-
-            <button
-              className="gradient-btn"
-              onClick={() => { haptic('success'); onBack(); }}
-            >
-              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                <CheckCircle2 size={18} /> Tugatdim ✅
-              </span>
-            </button>
-          </>
-        )}
-
-        <div style={{ height: 40 }} />
       </div>
     </div>
   );
@@ -1704,6 +1210,33 @@ function KitobScreen({ onBack }: { onNavigate?: (v: View, p?: any) => void; onBa
             ))}
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+// ==================== SAQLANGAN SCREEN ====================
+function SaqlanganScreen({ onBack }: { onBack: () => void }) {
+  return (
+    <div className="view-enter" style={{ position: 'relative', zIndex: 1, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <ScreenHeader title="Saqlangan" onBack={onBack} />
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, textAlign: 'center' }}>
+        <div
+          style={{
+            width: 72,
+            height: 72,
+            borderRadius: 20,
+            background: 'linear-gradient(135deg, #1E5F9E, #4A9FE7)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: 16,
+          }}
+        >
+          <Bookmark size={32} color="white" strokeWidth={1.5} />
+        </div>
+        <div style={{ fontSize: 15, fontWeight: 600, color: 'white', marginBottom: 6 }}>Hali hech narsa saqlanmagan</div>
+        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Yoqtirgan so'z, hikoya yoki testlaringizni shu yerda saqlab qo'yishingiz mumkin bo'ladi.</div>
       </div>
     </div>
   );
@@ -2360,11 +1893,8 @@ function App() {
   const renderView = () => {
     switch (view) {
       case 'menu': return <MainMenu onNavigate={navigate} />;
-      case 'ai_mentor': return <AIMentorScreen onNavigate={navigate} onBack={goBack} />;
       case 'vorstellung': return <VorstellungScreen onBack={goBack} />;
-      case 'aktiv_sprechen': return <AktivSprechenScreen onNavigate={navigate} onBack={goBack} />;
-      case 'aktiv_words': return <AktivWordsScreen payload={payload} onNavigate={navigate} onBack={goBack} />;
-      case 'aktiv_story': return <AktivStoryScreen payload={payload} onBack={goBack} />;
+      case 'saqlangan': return <SaqlanganScreen onBack={goBack} />;
       case 'lugat': return <LugatScreen onNavigate={navigate} onBack={goBack} />;
       case 'lugat_words': return <LugatWordsScreen payload={payload} onBack={goBack} />;
       case 'tarjimon': return <TarjimonScreen onBack={goBack} />;
